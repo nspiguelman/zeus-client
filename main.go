@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"strconv"
 	"sync"
 )
 
@@ -23,7 +24,11 @@ func main() {
 	for i, _ := range clients {
 		wg.Add(1)
 		go func(i int) {
-			kc := newKahootClient(i, *pin)
+			kc, err := newKahootClient("user"+strconv.Itoa(i), *pin)
+			if err != nil {
+				log.Fatal("create:", err)
+				return
+			}
 			clients[i] = kc
 			wg.Done()
 		}(i)
