@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 )
 
@@ -19,34 +20,18 @@ type KahootClient struct {
 }
 
 type KahootMessage struct {
-	TypeMessage string `json:"typeMessage"`
-}
-
-type KahootScore struct {
-	typeMessage  string `json:"typeMessage"`
-	PartialScore int
-	IsCorrect    bool
+	TypeMessage string
 }
 
 type KahootQuestion struct {
-	typeMessage string `json:"typeMessage"`
-	QuestionId  int    `json:"questionId"`
-	Answerids   []int  `json:"answerIds"`
+	TypeMessage string
+	QuestionId  int
+	AnswerIds   []int
 }
-
-/*
-type KahootMessage struct {
-	typeMessage  string
-	partialScore int
-	isCorrect    bool
-	questionId   int
-	answerIds    []int
-}
-*/
 
 type KahootAnswer struct {
-	QuestionId int
-	AnswerId   int
+	QuestionId int `json:"questionId,omitempty"`
+	AnswerId   int `json:"answerId,omitempty"`
 }
 
 type KahootLogin struct {
@@ -75,7 +60,7 @@ func (kc *KahootClient) login() error {
 
 func (kc *KahootClient) connect() error {
 	urlStr := fmt.Sprintf("ws://localhost:8080/room/%d/ws", kc.pin)
-	conn, _, err := websocket.DefaultDialer.Dial(urlStr, http.Header{"token": []string{kc.token}})
+	conn, _, err := websocket.DefaultDialer.Dial(urlStr, http.Header{"token": []string{kc.token}, "pin": []string{strconv.Itoa(kc.pin)}})
 	if err != nil {
 		return err
 	}
@@ -113,7 +98,6 @@ func (kc *KahootClient) playTrivia(questionId int, answerIds []int) {
 		QuestionId: questionId,
 		AnswerId:   answerIds[rand.Intn(len(answerIds))],
 	}
-	log.Println("ans:", ans)
 
 	b, err := json.Marshal(ans)
 	if err != nil {
@@ -122,6 +106,7 @@ func (kc *KahootClient) playTrivia(questionId int, answerIds []int) {
 	}
 
 	err = kc.conn.WriteMessage(websocket.TextMessage, b)
+	log.Println("username:", kc.username, "- answer:", string(b))
 	if err != nil {
 		log.Println("ws:", err)
 		return
@@ -130,12 +115,8 @@ func (kc *KahootClient) playTrivia(questionId int, answerIds []int) {
 }
 
 func (kc *KahootClient) endGame() {
-	// cuando finaliza el juego, cierra el ws
-	err := kc.conn.WriteMessage(websocket.TextMessage, []byte("Player "+kc.username+": I don't wanna go Mr. Stark!"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = kc.conn.Close()
+	log.Println("username:", kc.username, "- closing connection...")
+	err := kc.conn.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -155,9 +136,7 @@ func (kc *KahootClient) play(wg *sync.WaitGroup) {
 
 		var message KahootMessage
 		err = json.Unmarshal(rawMessage, &message)
-		log.Println("rawMessage:", string(rawMessage))
 		if err != nil {
-			log.Println(string(rawMessage))
 			log.Println("unmarshall:", err)
 			continue
 		}
@@ -167,7 +146,7 @@ func (kc *KahootClient) play(wg *sync.WaitGroup) {
 		case "question":
 			var kq KahootQuestion
 			_ = json.Unmarshal(rawMessage, &kq)
-			kc.playTrivia(kq.QuestionId, kq.Answerids)
+			kc.playTrivia(kq.QuestionId, kq.AnswerIds)
 
 		case "score":
 			continue
