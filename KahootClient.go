@@ -1,88 +1,163 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"math/rand"
+	"net/http"
+	"net/url"
 	"strconv"
-	"strings"
 	"sync"
-	"time"
 )
 
 type KahootClient struct {
-	conn   *websocket.Conn
-	pin    int
-	userId int
+	conn     *websocket.Conn
+	pin      int
+	username string
+	token    string
 }
 
-func newKahootClient(userId int, pin int) *KahootClient {
-	conn, _, err := websocket.DefaultDialer.Dial("ws://localhost:5000/ws", nil)
+type KahootMessage struct {
+	TypeMessage string
+}
+
+type KahootQuestion struct {
+	TypeMessage string
+	QuestionId  int
+	AnswerIds   []int
+}
+
+type KahootAnswer struct {
+	QuestionId int `json:"questionId,omitempty"`
+	AnswerId   int `json:"answerId,omitempty"`
+}
+
+type KahootLogin struct {
+	Token string
+}
+
+func (kc *KahootClient) login() error {
+	urlStr := fmt.Sprintf("http://localhost:8080/room/%d/name/%s/login", kc.pin, kc.username)
+	resp, err := http.PostForm(urlStr, url.Values{"name": {kc.username}})
 	if err != nil {
-		log.Fatal("dial:", err)
+		return err
 	}
-	kc := KahootClient{conn, pin, userId}
-	//kc.conn.WriteMessage(websocket.TextMessage, []byte("Player "+strconv.Itoa(kc.userId)+" entered the room."))
-	return &kc
+
+	defer resp.Body.Close()
+
+	var message KahootLogin
+	err = json.NewDecoder(resp.Body).Decode(&message)
+	if err != nil {
+		log.Fatal(resp.Body, err)
+		// read response error
+		return err
+	}
+	kc.token = message.Token
+	return nil
 }
 
-func (kc *KahootClient) playTrivia(n int, timeout int) {
-	// este es un metodo generico para trivias
-	// elige un entero entre 0 y n-1 y lo envia por el ws luego de una sleep aleatorio de timeout seg
-	ans := strconv.Itoa(rand.Intn(n))
-	time.Sleep(time.Duration(rand.Intn(timeout*1000)) * time.Millisecond)
-	kc.conn.WriteMessage(websocket.TextMessage, []byte("Player "+strconv.Itoa(kc.userId)+": "+ans))
+func (kc *KahootClient) connect() error {
+	urlStr := fmt.Sprintf("ws://localhost:8080/room/%d/ws", kc.pin)
+	conn, _, err := websocket.DefaultDialer.Dial(urlStr, http.Header{"token": []string{kc.token}, "pin": []string{strconv.Itoa(kc.pin)}})
+	if err != nil {
+		return err
+	}
+	kc.conn = conn
+	return nil
 }
 
-func (kc *KahootClient) playMultipleChoice(timeout int) {
-	// multiple choice son 4 opciones
-	kc.playTrivia(4, timeout)
+func newKahootClient(username string, pin int) (*KahootClient, error) {
+	var err error
+
+	kc := KahootClient{pin: pin, username: username}
+
+	// login
+	err = kc.login()
+	if err != nil {
+		log.Fatal("login:", err)
+		return nil, err
+	}
+
+	// establece ws
+	err = kc.connect()
+	if err != nil {
+		log.Fatal("login:", err)
+		return nil, err
+	}
+	log.Println("username:", kc.username, "- pin:", kc.pin, "- token:", kc.token)
+
+	return &kc, nil
 }
 
-func (kc *KahootClient) playTrueOrFalse(timeout int) {
-	// true = 0, false = 1
-	kc.playTrivia(2, timeout)
+func (kc *KahootClient) playTrivia(questionId int, answerIds []int) {
+	//time.Sleep(5000 * time.Millisecond)
+
+	ans := KahootAnswer{
+		QuestionId: questionId,
+		AnswerId:   answerIds[rand.Intn(len(answerIds))],
+	}
+
+	b, err := json.Marshal(ans)
+	if err != nil {
+		log.Println("json:", err)
+		return
+	}
+
+	err = kc.conn.WriteMessage(websocket.TextMessage, b)
+	log.Println("username:", kc.username, "- answer:", string(b))
+	if err != nil {
+		log.Println("ws:", err)
+		return
+	}
+
 }
 
 func (kc *KahootClient) endGame() {
-	// cuando finaliza el juego, cierra el ws
-	kc.conn.WriteMessage(websocket.TextMessage, []byte("Player "+strconv.Itoa(kc.userId)+": I don't wanna go Mr. Stark!"))
-	kc.conn.Close()
+	log.Println("username:", kc.username, "- closing connection...")
+	err := kc.conn.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (kc *KahootClient) play(wg *sync.WaitGroup) {
 	defer wg.Done()
 	// loop de juego
 	for {
-		// esperar broadcast
-		// TODO: buscar una mejor manera para esperar broadcast
-		_, message, err := kc.conn.ReadMessage()
+		// esperar mensaje
+		// TODO: buscar una mejor manera para esperar mensaje
+		_, rawMessage, err := kc.conn.ReadMessage()
 		if err != nil {
 			log.Println("read:", err)
 			return
 		}
 
-		// TODO: buscar en los headers los parametros de la pregunta
+		var message KahootMessage
+		err = json.Unmarshal(rawMessage, &message)
+		if err != nil {
+			log.Println("unmarshall:", err)
+			continue
+		}
+
 		// seleccionar tipo y responder
-		switch {
-		case strings.Contains(string(message), "multiple_choice"):
-			kc.playMultipleChoice(5)
+		switch message.TypeMessage {
+		case "question":
+			var kq KahootQuestion
+			_ = json.Unmarshal(rawMessage, &kq)
+			kc.playTrivia(kq.QuestionId, kq.AnswerIds)
 
-		case strings.Contains(string(message), "true_or_false"):
-			kc.playTrueOrFalse(5)
+		case "score":
+			continue
 
-		case strings.Contains(string(message), "endgame"):
+		case "endgame":
 			kc.endGame()
 			return
 
 		default:
-			//log.Printf("recv: %s", message)
+			log.Printf("recv: %s", rawMessage)
 		}
 	}
 
-	log.Println("bye!")
-
-	//
-
-	return
 }
