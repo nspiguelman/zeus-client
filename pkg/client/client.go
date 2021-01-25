@@ -76,7 +76,7 @@ func NewClient(username string, pin int) (*Client, error) {
 	// establece ws
 	err = c.connect()
 	if err != nil {
-		log.Fatal("login:", err)
+		log.Fatal("connect:", err)
 		return nil, err
 	}
 	log.Println("username:", c.username, "- pin:", c.pin, "- token:", c.token)
