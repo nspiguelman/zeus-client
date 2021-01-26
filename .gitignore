@@ -15,4 +15,5 @@
 # vendor/
 
 .idea
-zeus-client
+cmd/client-sim/client-sim
+
