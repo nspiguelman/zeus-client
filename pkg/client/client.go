@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Client struct {
@@ -97,6 +98,8 @@ func (c *Client) playTrivia(questionId int, answerIds []int) {
 		log.Println("json:", err)
 		return
 	}
+	// TODO: mejorar mecanismo para determinar el tiempo
+	time.Sleep(time.Duration(rand.Intn(6000))*time.Millisecond)
 
 	err = c.conn.WriteMessage(websocket.TextMessage, b)
 	log.Println("username:", c.username, "- answer:", string(b))
