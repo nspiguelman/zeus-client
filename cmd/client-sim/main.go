@@ -10,12 +10,13 @@ import (
 )
 
 func main() {
+	pin := client.ProcessCSV()
+
 	n := flag.Int("n", 1, "number of simulated clients")
-	pin := flag.Int("pin", 0, "room pin")
 	flag.Parse()
 
 	log.Println("Simulated clients: ", *n)
-	log.Println("Room PIN: ", *pin)
+	log.Println("Room PIN: ", pin)
 
 	var wg sync.WaitGroup
 	clients := make([]*client.Client, *n)
@@ -27,7 +28,7 @@ func main() {
 		wg.Add(1)
 		go func(i int) {
 			username := fmt.Sprintf("user%x_%05d", seed, i)
-			c, err := client.NewClient(username, *pin)
+			c, err := client.NewClient(username, pin)
 			if err != nil {
 				log.Fatal("construct:", err)
 				return
@@ -45,5 +46,4 @@ func main() {
 		go c.Play(&wg)
 	}
 	wg.Wait()
-
 }
