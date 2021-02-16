@@ -1,29 +1,33 @@
 package client
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
-	"math/rand"
 )
 
 type InteractiveClient struct {
 	username string
-	pin      string
+	pin      int
 	conn     *websocket.Conn
 	token    string
 }
 
-func NewInteractiveClient(pin string) *InteractiveClient {
-	// TODO: pedir username
-	username := "user"
-	return &InteractiveClient{username: username, pin: pin}
+func NewInteractiveClient(pin int) (*InteractiveClient, error){
+	var username string
+	fmt.Printf("username: ")
+	_, err := fmt.Scanln(&username)
+	if err != nil {
+		return &InteractiveClient{}, fmt.Errorf("input error: %w", err)
+	}
+	return &InteractiveClient{username: username, pin: pin}, nil
 }
 
 func (c *InteractiveClient) Username() string {
 	return c.username
 }
 
-func (c *InteractiveClient) Pin() string {
+func (c *InteractiveClient) Pin() int {
 	return c.pin
 }
 
@@ -36,10 +40,16 @@ func (c *InteractiveClient) SetConn(conn *websocket.Conn) {
 }
 
 func (c *InteractiveClient) Answer(question Question) Answer {
-	// TODO: Interactive answer
+	var i int
+	fmt.Printf("question id #%d: choose from 1 to %d: ", question.QuestionId, len(question.AnswerIds))
+	_, err := fmt.Scanln(&i)
+	if err != nil {
+		fmt.Println("input error:", err, "skipping...")
+		return Answer{}
+	}
 	ans := Answer{
 		QuestionId: question.QuestionId,
-		AnswerId:   question.AnswerIds[rand.Intn(len(question.AnswerIds))],
+		AnswerId:   question.AnswerIds[i],
 	}
 	return ans
 }

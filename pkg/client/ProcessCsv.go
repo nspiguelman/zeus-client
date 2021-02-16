@@ -187,19 +187,20 @@ func handlerError (wrongLength bool, messageToInvalidLength string, err error) {
 	}
 }
 
-func ProcessCSV() int {
+func ProcessCSV(csvPath string) int {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(r)
 		}
 	}()
-	kahoots, err := processKahoots("./CSVs/kahoots.csv")
+
+	kahoots, err := processKahoots(csvPath+"/kahoots.csv")
 	handlerError(len(kahoots) == 0, "The game can't be played. At least one kahoot must have been created", err)
 	pinToPlay := kahoots[0].Pin
-	questions, err := processQuestions("./CSVs/questions.csv", pinToPlay)
+	questions, err := processQuestions(csvPath+"/questions.csv", pinToPlay)
 	handlerError(len(questions) == 0, "The game can't be played. At least one question must have been created", err)
 	for _, value := range questions {
-		answers, err := processAnswers("./CSVs/answers.csv", strconv.Itoa(value.Id))
+		answers, err := processAnswers(csvPath+"/answers.csv", strconv.Itoa(value.Id))
 		handlerError(len(answers) != 4, "The game can't be played. Each question must have four answers", err)
 	}
 	response, err := strconv.Atoi(pinToPlay)

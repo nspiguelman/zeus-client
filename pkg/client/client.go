@@ -7,11 +7,12 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 type Client interface {
 	Username() string
-	Pin() string
+	Pin() int
 	Conn() *websocket.Conn
 	SetConn(*websocket.Conn)
 	Answer(Question) Answer
@@ -31,13 +32,12 @@ var cfg = Config{ServerHost: "localhost", ServerPort: 8080}
 func Login(client Client) error {
 	pin := client.Pin()
 	username := client.Username()
-	urlStr := fmt.Sprintf("http://%s:%d/room/%s/name/%s/login", cfg.ServerHost, cfg.ServerPort, pin, username)
+	urlStr := fmt.Sprintf("http://%s:%d/room/%d/name/%s/login", cfg.ServerHost, cfg.ServerPort, pin, username)
 
 	resp, err := http.PostForm(urlStr, url.Values{"name": {username}})
 	if err != nil {
 		return fmt.Errorf("can't login: %w", err)
 	}
-
 	defer resp.Body.Close()
 
 	var message map[string]interface{}
@@ -47,11 +47,14 @@ func Login(client Client) error {
 	if err != nil {
 		return fmt.Errorf("can't decode login response: %s (%w)", resp.Body, err)
 	}
-
+	if message["token"] == nil {
+		return fmt.Errorf("login response: %s", message)
+	}
 	token := message["token"].(string)
-	urlStr = fmt.Sprintf("ws://%s:%d/room/%s/ws", cfg.ServerHost, cfg.ServerPort, client.Pin())
+	urlStr = fmt.Sprintf("ws://%s:%d/room/%d/ws", cfg.ServerHost, cfg.ServerPort, pin)
 
-	ws, _, err = websocket.DefaultDialer.Dial(urlStr, http.Header{"token": []string{token}, "pin": []string{pin}})
+	ws, _, err = websocket.DefaultDialer.Dial(urlStr,
+		http.Header{"token": []string{token}, "pin": []string{strconv.Itoa(pin)}})
 	if err != nil {
 		return fmt.Errorf("can't establish ws: %w", err)
 	}

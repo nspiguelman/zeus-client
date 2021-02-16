@@ -9,12 +9,12 @@ import (
 
 type SimulatedClient struct {
 	username string
-	pin      string
+	pin      int
 	conn     *websocket.Conn
 	token    string
 }
 
-func NewSimulatedClient(username string, pin string) *SimulatedClient {
+func NewSimulatedClient(username string, pin int) *SimulatedClient {
 	return &SimulatedClient{username: username, pin: pin}
 }
 
@@ -22,7 +22,7 @@ func (c *SimulatedClient) Username() string {
 	return c.username
 }
 
-func (c *SimulatedClient) Pin() string {
+func (c *SimulatedClient) Pin() int {
 	return c.pin
 }
 
