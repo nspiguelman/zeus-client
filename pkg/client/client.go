@@ -5,23 +5,20 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
-	"strconv"
-	"sync"
 )
 
-type Client struct {
-	conn     *websocket.Conn
-	pin      int
-	username string
-	token    string
+type Client interface {
+	Username() string
+	Pin() string
+	Conn() *websocket.Conn
+	SetConn(*websocket.Conn)
+	Answer(Question) Answer
+	PrintScore()
+	EndGame()
 }
 
-type Login struct {
-	Token string
-}
 
 type Config struct {
 	ServerHost string
@@ -31,126 +28,109 @@ type Config struct {
 // TODO: usar envvar
 var cfg = Config{ServerHost: "localhost", ServerPort: 8080}
 
-func (c *Client) login() error {
-	urlStr := fmt.Sprintf("http://%s:%d/room/%d/name/%s/login", cfg.ServerHost, cfg.ServerPort,c.pin, c.username)
-	resp, err := http.PostForm(urlStr, url.Values{"name": {c.username}})
+func Login(client Client) error {
+	pin := client.Pin()
+	username := client.Username()
+	urlStr := fmt.Sprintf("http://%s:%d/room/%s/name/%s/login", cfg.ServerHost, cfg.ServerPort, pin, username)
+
+	resp, err := http.PostForm(urlStr, url.Values{"name": {username}})
 	if err != nil {
-		return err
+		return fmt.Errorf("can't login: %w", err)
 	}
 
 	defer resp.Body.Close()
 
-	var message Login
+	var message map[string]interface{}
+	var ws *websocket.Conn
+
 	err = json.NewDecoder(resp.Body).Decode(&message)
 	if err != nil {
-		log.Fatal(resp.Body, err)
-		// read response error
-		return err
+		return fmt.Errorf("can't decode login response: %s (%w)", resp.Body, err)
 	}
-	c.token = message.Token
+
+	token := message["token"].(string)
+	urlStr = fmt.Sprintf("ws://%s:%d/room/%s/ws", cfg.ServerHost, cfg.ServerPort, client.Pin())
+
+	ws, _, err = websocket.DefaultDialer.Dial(urlStr, http.Header{"token": []string{token}, "pin": []string{pin}})
+	if err != nil {
+		return fmt.Errorf("can't establish ws: %w", err)
+	}
+
+	client.SetConn(ws)
 	return nil
 }
 
-func (c *Client) connect() error {
-	urlStr := fmt.Sprintf("ws://%s:%d/room/%d/ws", cfg.ServerHost, cfg.ServerPort, c.pin)
-	conn, _, err := websocket.DefaultDialer.Dial(urlStr, http.Header{"token": []string{c.token}, "pin": []string{strconv.Itoa(c.pin)}})
-	if err != nil {
-		return err
-	}
-	c.conn = conn
-	return nil
-}
+func Play(client Client) {
 
-func NewClient(username string, pin int) (*Client, error) {
-	var err error
-
-	c := Client{pin: pin, username: username}
-
-	// login
-	err = c.login()
-	if err != nil {
-		log.Fatal("login:", err)
-		return nil, err
-	}
-
-	// establece ws
-	err = c.connect()
-	if err != nil {
-		log.Fatal("connect:", err)
-		return nil, err
-	}
-	log.Println("username:", c.username, "- pin:", c.pin, "- token:", c.token)
-
-	return &c, nil
-}
-
-func (c *Client) playTrivia(questionId int, answerIds []int) {
-	//time.Sleep(5000 * time.Millisecond)
-
-	ans := Answer{
-		QuestionId: questionId,
-		AnswerId:   answerIds[rand.Intn(len(answerIds))],
-	}
-
-	b, err := json.Marshal(ans)
-	if err != nil {
-		log.Println("json:", err)
-		return
-	}
-
-	err = c.conn.WriteMessage(websocket.TextMessage, b)
-	log.Println("username:", c.username, "- answer:", string(b))
-	if err != nil {
-		log.Println("ws:", err)
-		return
-	}
-
-}
-
-func (c *Client) endGame() {
-	log.Println("username:", c.username, "- closing connection...")
-	err := c.conn.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (c *Client) Play(wg *sync.WaitGroup) {
-	defer wg.Done()
 	// loop de juego
 	for {
-		// esperar mensaje
-		// TODO: buscar una mejor manera para esperar mensaje
-		_, rawMessage, err := c.conn.ReadMessage()
+		message, err := readMessage(client)
 		if err != nil {
-			log.Println("read:", err)
+			log.Println("json:", err)
 			return
-		}
-
-		var message Message
-		err = json.Unmarshal(rawMessage, &message)
-		if err != nil {
-			log.Println("unmarshall:", err)
-			continue
 		}
 
 		// seleccionar tipo y responder
 		switch message.TypeMessage {
 		case "question":
-			var q Question
-			_ = json.Unmarshal(rawMessage, &q)
-			c.playTrivia(q.QuestionId, q.AnswerIds)
+			answer := client.Answer(
+				Question{
+					message.QuestionId,
+					message.AnswerIds,
+				})
+
+			bAnswer, err := json.Marshal(answer)
+			if err != nil {
+				log.Println("can't marshal answer json:", err, "skipping...")
+				continue
+			}
+			log.Println("username:", client.Username(), "- answer:", string(bAnswer))
+			writeMessage(client, bAnswer)
 
 		case "score":
-			continue
+			/*
+			var s Score
+			_ = json.Unmarshal(rawMessage, &s)
+
+			*/
+			client.PrintScore()
+			log.Printf("recv: %v", message)
 
 		case "endgame":
-			c.endGame()
+			client.EndGame()
 			return
 
 		default:
-			log.Printf("recv: %s", rawMessage)
+			log.Printf("recv: %v", message)
 		}
+	}
+
+}
+
+func readMessage(client Client) (Message, error){
+	// esperar mensaje
+	_, rawMessage, err := client.Conn().ReadMessage()
+	if err != nil {
+		log.Println("read:", err)
+		return Message{}, err
+	}
+
+	var message Message
+	log.Println(string(rawMessage))
+	err = json.Unmarshal(rawMessage, &message)
+	if err != nil {
+		log.Println("unmarshall:", err)
+		return Message{}, err
+	}
+	return message, err
+}
+
+func writeMessage(client Client, message []byte) {
+
+	err := client.Conn().WriteMessage(websocket.TextMessage, message)
+	if err != nil {
+		log.Println("ws:", err)
+		return
 	}
 
 }

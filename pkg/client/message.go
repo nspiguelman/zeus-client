@@ -2,10 +2,11 @@ package client
 
 type Message struct {
 	TypeMessage string
+	QuestionId  int
+	AnswerIds   []int
 }
 
 type Question struct {
-	TypeMessage string
 	QuestionId  int
 	AnswerIds   []int
 }

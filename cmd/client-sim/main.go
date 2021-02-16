@@ -11,38 +11,46 @@ import (
 
 func main() {
 	n := flag.Int("n", 1, "number of simulated clients")
-	pin := flag.Int("pin", 0, "room pin")
+	pin := flag.String("pin", "", "room pin")
 	flag.Parse()
 
 	log.Println("Simulated clients: ", *n)
 	log.Println("Room PIN: ", *pin)
 
-	var wg sync.WaitGroup
-	clients := make([]*client.Client, *n)
+	clients := make([]*client.SimulatedClient, *n)
 
 	// instanciar a los clientes e ingresar a la sala
 	seed := time.Now().Unix()
 	log.Println("Initializing clients...")
-	for i, _ := range clients {
+	for i := range clients {
+		username := fmt.Sprintf("user%x_%05d", seed, i)
+		clients[i] = client.NewSimulatedClient(username, *pin)
+	}
+
+	// jugar
+	var wg sync.WaitGroup
+
+	log.Println("Joining game...")
+	for _, c := range clients {
 		wg.Add(1)
-		go func(i int) {
-			username := fmt.Sprintf("user%x_%05d", seed, i)
-			c, err := client.NewClient(username, *pin)
+		go func(c client.Client) {
+			err := client.Login(c)
 			if err != nil {
-				log.Fatal("construct:", err)
-				return
+				panic(err)
 			}
-			clients[i] = c
 			wg.Done()
-		}(i)
+		}(c)
 	}
 	wg.Wait()
 
-	log.Println("Let the game begin!")
-	// jugar
+
+	log.Println("Starting game...")
 	for _, c := range clients {
 		wg.Add(1)
-		go c.Play(&wg)
+		go func(c client.Client) {
+			client.Play(c)
+			wg.Done()
+		}(c)
 	}
 	wg.Wait()
 
