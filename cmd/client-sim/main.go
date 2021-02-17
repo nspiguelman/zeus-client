@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fInteractiveMode := flag.Bool("i", false, "interactive mode")
+	fInteractiveMode := flag.Bool("i", false, "enable interactive mode")
 	fNClient := flag.Int("n", 1, "number of simulated clients")
 	flag.Parse()
 
