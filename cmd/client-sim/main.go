@@ -20,29 +20,22 @@ func main() {
 	nClient := *fNClient
 	pin := csv.ProcessCSV()
 
-	log.Println("Room PIN:", pin)
-	log.Println("Simulated clients:", nClient)
-	log.Println("Interactive mode:", interactiveMode)
-
-	if interactiveMode == true {
-		log.SetOutput(ioutil.Discard)
-	}
+	log.Println("room PIN:", pin)
+	log.Println("simulated clients:", nClient)
+	log.Println("interactive mode:", interactiveMode)
 
 	clients := make([]*client.SimulatedClient, nClient)
 
 	// instanciar a los clientes e ingresar a la sala
 	seed := time.Now().Unix()
-	log.Println("Initializing clients...")
+	log.Println("initializing simulated clients...")
 	for i := range clients {
 		username := fmt.Sprintf("user%x_%05d", seed, i)
 		clients[i] = client.NewSimulatedClient(username, pin)
 	}
 
-
-	// jugar
 	var wg sync.WaitGroup
-
-	log.Println("Joining game...")
+	log.Println("  joining room...")
 	for _, c := range clients {
 		wg.Add(1)
 		go func(c client.Client) {
@@ -54,8 +47,8 @@ func main() {
 		}(c)
 	}
 	wg.Wait()
+	log.Println("  done.")
 
-	log.Println("Starting game...")
 	for _, c := range clients {
 		wg.Add(1)
 		go func(c client.Client) {
@@ -63,17 +56,34 @@ func main() {
 			wg.Done()
 		}(c)
 	}
+	log.Println("ready to play.")
+
+
 	if interactiveMode == true {
-		iClient, _ := client.NewInteractiveClient(pin)
-		err := client.Login(iClient)
+		log.SetOutput(ioutil.Discard)
+		fmt.Println("")
+		fmt.Println("/**********************************/")
+		fmt.Println("/******** interactive mode ********/")
+		fmt.Println("/**********************************/")
+		fmt.Println("")
+		ic, _ := client.NewInteractiveClient(pin)
+		defer ic.GameOver()
+
+		fmt.Println("  joining game...")
+		err := client.Login(ic)
 		if err != nil {
-			fmt.Println("could not login:", err)
-			return
+			panic(err)
 		}
-		fmt.Println("login successful.")
-		fmt.Println("starting game...")
-		client.Play(iClient)
+		fmt.Println("  done.")
+
+		wg.Add(1)
+		go func(c client.Client) {
+			client.Play(c)
+			wg.Done()
+		}(ic)
+		fmt.Println("ready to play.")
 	}
 
 	wg.Wait()
+
 }
