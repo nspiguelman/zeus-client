@@ -13,13 +13,12 @@ import (
 type Client interface {
 	Username() string
 	Pin() int
-	Token() string
 	SetToken(string)
 	Conn() *websocket.Conn
 	SetConn(*websocket.Conn)
 	Answer(Question) Answer
 	PrintScore(map[string]Score)
-	EndGame()
+	GameOver()
 }
 
 
@@ -67,7 +66,7 @@ func Login(client Client) error {
 }
 
 func Play(client Client) {
-
+	defer client.GameOver()
 	// loop de juego
 	for {
 		message, err := readMessage(client)
@@ -95,10 +94,6 @@ func Play(client Client) {
 
 		case "score":
 			client.PrintScore(message.Scores)
-
-		case "endgame":
-			client.EndGame()
-			return
 
 		default:
 			log.Printf("recv: %v", message)

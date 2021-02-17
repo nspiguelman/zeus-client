@@ -31,10 +31,6 @@ func (c *InteractiveClient) Pin() int {
 	return c.pin
 }
 
-func (c *InteractiveClient) Token() string {
-	return c.token
-}
-
 func (c *InteractiveClient) SetToken(token string) {
 	c.token = token
 }
@@ -54,28 +50,28 @@ func (c *InteractiveClient) Answer(question Question) Answer {
 	if err != nil {
 		fmt.Println("input error:", err, "skipping...")
 		return Answer{}
-	} else if i < 0 || i > len(question.AnswerIds) - 1 {
+	} else if i < 1 || i > len(question.AnswerIds) {
 		fmt.Println("invalid input:", i, "skipping...")
 		return Answer{}
 	}
 	ans := Answer{
 		QuestionId: question.QuestionId,
-		AnswerId:   question.AnswerIds[i],
+		AnswerId:   question.AnswerIds[i-1],
 	}
 	return ans
 }
 
 func (c *InteractiveClient) PrintScore(scores map[string]Score) {
-	score := scores[c.Token()]
+	score := scores[c.token]
 	if score.IsCorrect {
-		fmt.Println("correct! score:", score.Score)
+		fmt.Println("username:", c.username, "- correct! score:", score.Score)
 	} else {
-		fmt.Println("incorrect! score:", score.Score)
+		fmt.Println("username:", c.username, "- incorrect! score:", score.Score)
 	}
 
 }
 
-func (c *InteractiveClient) EndGame() {
+func (c *InteractiveClient) GameOver() {
 	log.Println("username:", c.username, "- closing connection...")
 	err := c.conn.Close()
 	if err != nil {

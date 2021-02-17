@@ -26,10 +26,6 @@ func (c *SimulatedClient) Pin() int {
 	return c.pin
 }
 
-func (c *SimulatedClient) Token() string {
-	return c.token
-}
-
 func (c *SimulatedClient) SetToken(token string) {
 	c.token = token
 }
@@ -43,7 +39,7 @@ func (c *SimulatedClient) SetConn(conn *websocket.Conn) {
 }
 
 func (c *SimulatedClient) Answer(question Question) Answer {
-	time.Sleep(5000 * time.Millisecond)
+	time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
 	ans := Answer{
 		QuestionId: question.QuestionId,
 		AnswerId:   question.AnswerIds[rand.Intn(len(question.AnswerIds))],
@@ -52,15 +48,16 @@ func (c *SimulatedClient) Answer(question Question) Answer {
 }
 
 func (c *SimulatedClient) PrintScore(scores map[string]Score) {
-	score := scores[c.Token()]
+	score := scores[c.token]
+	//log.Println(c.token, scores)
 	if score.IsCorrect {
-		log.Println("correct! score:", score.Score)
+		log.Println("username:", c.username, "- correct! score:", score.Score)
 	} else {
-		log.Println("incorrect! score:", score.Score)
+		log.Println("username:", c.username, "- incorrect! score:", score.Score)
 	}
 }
 
-func (c *SimulatedClient) EndGame() {
+func (c *SimulatedClient) GameOver() {
 	log.Println("username:", c.username, "- closing connection...")
 	err := c.conn.Close()
 	if err != nil {

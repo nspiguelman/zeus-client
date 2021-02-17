@@ -21,13 +21,12 @@ func main() {
 	pin := csv.ProcessCSV()
 
 	log.Println("Room PIN:", pin)
-	log.Println("Interactive mode:", interactiveMode)
 	log.Println("Simulated clients:", nClient)
+	log.Println("Interactive mode:", interactiveMode)
 
 	if interactiveMode == true {
 		log.SetOutput(ioutil.Discard)
 	}
-
 
 	clients := make([]*client.SimulatedClient, nClient)
 
@@ -55,7 +54,6 @@ func main() {
 		}(c)
 	}
 	wg.Wait()
-
 
 	log.Println("Starting game...")
 	for _, c := range clients {
