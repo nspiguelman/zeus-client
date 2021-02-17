@@ -9,8 +9,8 @@ import (
 type InteractiveClient struct {
 	username string
 	pin      int
-	conn     *websocket.Conn
 	token    string
+	conn     *websocket.Conn
 }
 
 func NewInteractiveClient(pin int) (*InteractiveClient, error){
@@ -31,6 +31,14 @@ func (c *InteractiveClient) Pin() int {
 	return c.pin
 }
 
+func (c *InteractiveClient) Token() string {
+	return c.token
+}
+
+func (c *InteractiveClient) SetToken(token string) {
+	c.token = token
+}
+
 func (c *InteractiveClient) Conn() *websocket.Conn {
 	return c.conn
 }
@@ -46,6 +54,9 @@ func (c *InteractiveClient) Answer(question Question) Answer {
 	if err != nil {
 		fmt.Println("input error:", err, "skipping...")
 		return Answer{}
+	} else if i < 0 || i > len(question.AnswerIds) - 1 {
+		fmt.Println("invalid input:", i, "skipping...")
+		return Answer{}
 	}
 	ans := Answer{
 		QuestionId: question.QuestionId,
@@ -54,7 +65,13 @@ func (c *InteractiveClient) Answer(question Question) Answer {
 	return ans
 }
 
-func (c *InteractiveClient) PrintScore() {
+func (c *InteractiveClient) PrintScore(scores map[string]Score) {
+	score := scores[c.Token()]
+	if score.IsCorrect {
+		fmt.Printf("correct! score: %v", score.Score)
+	} else {
+		fmt.Printf("incorrect! score: %v", score.Score)
+	}
 
 }
 

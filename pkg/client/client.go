@@ -13,10 +13,12 @@ import (
 type Client interface {
 	Username() string
 	Pin() int
+	Token() string
+	SetToken(string)
 	Conn() *websocket.Conn
 	SetConn(*websocket.Conn)
 	Answer(Question) Answer
-	PrintScore()
+	PrintScore(map[string]Score)
 	EndGame()
 }
 
@@ -59,6 +61,7 @@ func Login(client Client) error {
 		return fmt.Errorf("can't establish ws: %w", err)
 	}
 
+	client.SetToken(token)
 	client.SetConn(ws)
 	return nil
 }
@@ -91,13 +94,7 @@ func Play(client Client) {
 			writeMessage(client, bAnswer)
 
 		case "score":
-			/*
-			var s Score
-			_ = json.Unmarshal(rawMessage, &s)
-
-			*/
-			client.PrintScore()
-			log.Printf("recv: %v", message)
+			client.PrintScore(message.Scores)
 
 		case "endgame":
 			client.EndGame()
@@ -119,7 +116,7 @@ func readMessage(client Client) (Message, error){
 	}
 
 	var message Message
-	log.Println(string(rawMessage))
+	//log.Println(string(rawMessage))
 	err = json.Unmarshal(rawMessage, &message)
 	if err != nil {
 		log.Println("unmarshall:", err)

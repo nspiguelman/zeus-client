@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/nspiguelman/zeus-client/pkg/client"
+	"github.com/nspiguelman/zeus-client/pkg/csv"
 	"io/ioutil"
 	"log"
 	"sync"
@@ -17,7 +18,7 @@ func main() {
 
 	interactiveMode := *fInteractiveMode
 	nClient := *fNClient
-	pin := client.ProcessCSV()
+	pin := csv.ProcessCSV()
 
 	log.Println("Room PIN:", pin)
 	log.Println("Interactive mode:", interactiveMode)

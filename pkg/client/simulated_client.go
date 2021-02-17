@@ -10,8 +10,8 @@ import (
 type SimulatedClient struct {
 	username string
 	pin      int
-	conn     *websocket.Conn
 	token    string
+	conn     *websocket.Conn
 }
 
 func NewSimulatedClient(username string, pin int) *SimulatedClient {
@@ -24,6 +24,14 @@ func (c *SimulatedClient) Username() string {
 
 func (c *SimulatedClient) Pin() int {
 	return c.pin
+}
+
+func (c *SimulatedClient) Token() string {
+	return c.token
+}
+
+func (c *SimulatedClient) SetToken(token string) {
+	c.token = token
 }
 
 func (c *SimulatedClient) Conn() *websocket.Conn {
@@ -43,8 +51,13 @@ func (c *SimulatedClient) Answer(question Question) Answer {
 	return ans
 }
 
-func (c *SimulatedClient) PrintScore() {
-
+func (c *SimulatedClient) PrintScore(scores map[string]Score) {
+	score := scores[c.Token()]
+	if score.IsCorrect {
+		log.Printf("correct! score: %v", score.Score)
+	} else {
+		log.Printf("incorrect! score: %v", score.Score)
+	}
 }
 
 func (c *SimulatedClient) EndGame() {
