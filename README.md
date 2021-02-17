@@ -3,8 +3,7 @@
 ## build
 
 ```bash
-cd cmd/client-sim
-go build
+go build -o client-sim cmd/client-sim/main.go
 ```
 
 
@@ -12,8 +11,6 @@ go build
 
 ```bash
 Usage of ./client-sim:
-  -n int
-    	number of simulated clients (default 1)
-  -pin int
-    	room pin
+  -i     enable interactive mode
+  -n int number of simulated clients (default 1)
 ```
