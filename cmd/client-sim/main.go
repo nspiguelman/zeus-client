@@ -12,31 +12,18 @@ import (
 
 func main() {
 	fInteractiveMode := flag.Bool("i", false, "interactive mode")
-	fCSV := flag.String("csv", "", "path to csv files")
-
-	fPin := flag.Int("pin", 0, "room pin. ignored if csv files are provided")
 	fNClient := flag.Int("n", 1, "number of simulated clients")
 	flag.Parse()
 
 	interactiveMode := *fInteractiveMode
-	csv := *fCSV
-	pin := *fPin
 	nClient := *fNClient
+	pin := client.ProcessCSV()
 
-
+	log.Println("Room PIN:", pin)
 	log.Println("Interactive mode:", interactiveMode)
 	log.Println("Simulated clients:", nClient)
 
-	if csv != "" {
-		log.Println("CSV files path:", csv)
-		pin = client.ProcessCSV(csv)
-		log.Println("Room PIN:", pin)
-	} else {
-		log.Println("Room PIN:", pin)
-	}
-
 	if interactiveMode == true {
-		log.SetFlags(0)
 		log.SetOutput(ioutil.Discard)
 	}
 
