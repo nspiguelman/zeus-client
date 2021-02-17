@@ -54,9 +54,9 @@ func (c *SimulatedClient) Answer(question Question) Answer {
 func (c *SimulatedClient) PrintScore(scores map[string]Score) {
 	score := scores[c.Token()]
 	if score.IsCorrect {
-		log.Printf("correct! score: %v", score.Score)
+		log.Println("correct! score:", score.Score)
 	} else {
-		log.Printf("incorrect! score: %v", score.Score)
+		log.Println("incorrect! score:", score.Score)
 	}
 }
 

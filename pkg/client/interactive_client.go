@@ -68,9 +68,9 @@ func (c *InteractiveClient) Answer(question Question) Answer {
 func (c *InteractiveClient) PrintScore(scores map[string]Score) {
 	score := scores[c.Token()]
 	if score.IsCorrect {
-		fmt.Printf("correct! score: %v", score.Score)
+		fmt.Println("correct! score:", score.Score)
 	} else {
-		fmt.Printf("incorrect! score: %v", score.Score)
+		fmt.Println("incorrect! score:", score.Score)
 	}
 
 }
