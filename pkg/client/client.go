@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type Client interface {
@@ -94,6 +95,12 @@ func Play(client Client) {
 
 		case "score":
 			client.PrintScore(message.Scores)
+			resp, err := http.Post(strings.Replace("http://localhost:8080/room/:id/send_question", ":id", strconv.Itoa(client.Pin()), 1), "", nil)
+			if err != nil {
+
+			}
+
+			fmt.Println(resp)
 
 		default:
 			log.Printf("recv: %v", message)

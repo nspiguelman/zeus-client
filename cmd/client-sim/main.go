@@ -7,6 +7,9 @@ import (
 	"github.com/nspiguelman/zeus-client/pkg/csv"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -49,6 +52,7 @@ func main() {
 	wg.Wait()
 	log.Println("  done.")
 
+
 	for _, c := range clients {
 		wg.Add(1)
 		go func(c client.Client) {
@@ -82,8 +86,14 @@ func main() {
 			wg.Done()
 		}(ic)
 		fmt.Println("ready to play.")
+		resp, err := http.Post(strings.Replace("http://localhost:8080/room/:id/send_question", ":id", strconv.Itoa(pin), 1), "", nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer resp.Body.Close()
 	}
 
 	wg.Wait()
-
+	fmt.Println("final")
+	return
 }
