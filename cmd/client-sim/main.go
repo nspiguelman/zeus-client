@@ -7,21 +7,23 @@ import (
 	"github.com/nspiguelman/zeus-client/pkg/csv"
 	"io/ioutil"
 	"log"
-	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
 
 func main() {
 	fInteractiveMode := flag.Bool("i", false, "enable interactive mode")
-	fNClient := flag.Int("n", 1, "number of simulated clients")
+	fNClient := flag.Int("n", 0, "number of simulated clients")
+	fPin := flag.Int("pin", 0, "room PIN")
 	flag.Parse()
 
 	interactiveMode := *fInteractiveMode
 	nClient := *fNClient
-	pin := csv.ProcessCSV()
+	pin := *fPin
+
+	if *fPin == 0 {
+		pin = csv.ProcessCSV()
+	}
 
 	log.Println("room PIN:", pin)
 	log.Println("simulated clients:", nClient)
@@ -86,11 +88,6 @@ func main() {
 			wg.Done()
 		}(ic)
 		fmt.Println("ready to play.")
-		resp, err := http.Post(strings.Replace("http://localhost:8080/room/:id/send_question", ":id", strconv.Itoa(pin), 1), "", nil)
-		if err != nil {
-			fmt.Println(err)
-		}
-		defer resp.Body.Close()
 	}
 
 	wg.Wait()

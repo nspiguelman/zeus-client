@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 )
 
 type Client interface {
@@ -19,6 +18,7 @@ type Client interface {
 	SetConn(*websocket.Conn)
 	Answer(Question) Answer
 	PrintScore(map[string]Score)
+	NextRound()
 	GameOver()
 }
 
@@ -68,6 +68,7 @@ func Login(client Client) error {
 
 func Play(client Client) {
 	defer client.GameOver()
+	client.NextRound()
 	// loop de juego
 	for {
 		message, err := readMessage(client)
@@ -95,12 +96,7 @@ func Play(client Client) {
 
 		case "score":
 			client.PrintScore(message.Scores)
-			resp, err := http.Post(strings.Replace("http://localhost:8080/room/:id/send_question", ":id", strconv.Itoa(client.Pin()), 1), "", nil)
-			if err != nil {
-
-			}
-
-			fmt.Println(resp)
+			client.NextRound()
 
 		default:
 			log.Printf("recv: %v", message)

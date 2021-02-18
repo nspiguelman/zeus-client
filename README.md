@@ -11,6 +11,7 @@ go build -o client-sim cmd/client-sim/main.go
 
 ```bash
 Usage of ./client-sim:
-  -i     enable interactive mode
-  -n int number of simulated clients (default 1)
+  -i          enable interactive mode
+  -n   int    number of simulated clients
+  -pin int    room PIN
 ```

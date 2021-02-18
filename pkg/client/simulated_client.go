@@ -57,6 +57,10 @@ func (c *SimulatedClient) PrintScore(scores map[string]Score) {
 	}
 }
 
+func (c *SimulatedClient) NextRound() {
+
+}
+
 func (c *SimulatedClient) GameOver() {
 	log.Println("username:", c.username, "- closing connection...")
 	err := c.conn.Close()

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"net/http"
+	"time"
 )
 
 type InteractiveClient struct {
@@ -70,7 +72,16 @@ func (c *InteractiveClient) PrintScore(scores map[string]Score) {
 	}
 
 }
+func (c *InteractiveClient) NextRound()  {
+	time.Sleep(3*time.Second)
 
+	urlStr := fmt.Sprintf("http://%s:%d/room/%d/send_question", cfg.ServerHost, cfg.ServerPort, c.pin)
+	_, err := http.Post(urlStr, "", nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
 func (c *InteractiveClient) GameOver() {
 	log.Println("username:", c.username, "- closing connection...")
 	err := c.conn.Close()
